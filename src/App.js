@@ -105,7 +105,9 @@ function App() {
     return saved ? JSON.parse(saved) : DEFAULT_NOTIF_TIMES;
   });
   const [notifEnabled, setNotifEnabled] = useState(() => {
-    return localStorage.getItem('notifEnabled') === 'true';
+    const saved = localStorage.getItem('notifEnabled') === 'true';
+    if (saved && 'Notification' in window && Notification.permission !== 'granted') return false;
+    return saved;
   });
   const [notifStatus, setNotifStatus] = useState('');
   const [toast, setToast] = useState(null);
