@@ -21,10 +21,15 @@ const unitPlural = (unit) => {
   return unit;
 };
 
-const showNotification = async (title, body) => {
+const showNotification = async (title, body, showToast) => {
   if (Notification.permission !== 'granted') return false;
 
-  // Try Service Worker (required for background/PWA notifications)
+  // When page is visible, show in-app toast (Chrome desktop suppresses OS notifications when tab is focused)
+  if (document.visibilityState === 'visible') {
+    showToast && showToast(title, body);
+  }
+
+  // Always try OS notification too (works when page is in background)
   if ('serviceWorker' in navigator) {
     try {
       const swReady = await Promise.race([
@@ -44,7 +49,6 @@ const showNotification = async (title, body) => {
     }
   }
 
-  // Fallback: direct Notification API (works only when page is open)
   try {
     new Notification(title, { body, icon: '/logo192.png' });
     return true;
@@ -55,7 +59,7 @@ const showNotification = async (title, body) => {
 };
 
 // Schedule notifications using setTimeout
-const scheduleNotifications = (notifTimes, meds) => {
+const scheduleNotifications = (notifTimes, meds, showToast) => {
   if (window._notifTimers) window._notifTimers.forEach(clearTimeout);
   window._notifTimers = [];
   if (Notification.permission !== 'granted') return;
@@ -75,8 +79,8 @@ const scheduleNotifications = (notifTimes, meds) => {
 
     const timer = setTimeout(() => {
       const names = slotMeds.map(m => m.name).join(', ');
-      showNotification('💊 זמן לקחת תרופות', `${TIMES[slot]}: ${names}`);
-      scheduleNotifications(notifTimes, meds);
+      showNotification('💊 זמן לקחת תרופות', `${TIMES[slot]}: ${names}`, showToast);
+      scheduleNotifications(notifTimes, meds, showToast);
     }, delay);
 
     window._notifTimers.push(timer);
@@ -104,6 +108,12 @@ function App() {
     return localStorage.getItem('notifEnabled') === 'true';
   });
   const [notifStatus, setNotifStatus] = useState('');
+  const [toast, setToast] = useState(null);
+
+  const showToast = (title, body) => {
+    setToast({ title, body });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   useEffect(() => { localStorage.setItem('meds', JSON.stringify(meds)); }, [meds]);
   useEffect(() => {
@@ -118,7 +128,7 @@ function App() {
       navigator.serviceWorker.register('/service-worker.js').catch(e => console.log('SW error', e));
     }
     if (notifEnabled && Notification.permission === 'granted') {
-      scheduleNotifications(notifTimes, meds);
+      scheduleNotifications(notifTimes, meds, null);
     }
   // eslint-disable-next-line
   }, []);
@@ -131,7 +141,7 @@ function App() {
     const result = await Notification.requestPermission();
     if (result === 'granted') {
       setNotifEnabled(true);
-      scheduleNotifications(notifTimes, meds);
+      scheduleNotifications(notifTimes, meds, showToast);
       setNotifStatus('✅ התראות פעילות!');
     } else {
       setNotifStatus('❌ ההרשאה נדחתה. נא לאשר בהגדרות הטלפון.');
@@ -140,7 +150,7 @@ function App() {
 
   const handleSaveNotifTimes = () => {
     if (notifEnabled && Notification.permission === 'granted') {
-      scheduleNotifications(notifTimes, meds);
+      scheduleNotifications(notifTimes, meds, showToast);
     }
     setNotifStatus('✅ השעות נשמרו!');
     setTimeout(() => setNotifStatus(''), 3000);
@@ -151,7 +161,7 @@ function App() {
       setNotifStatus('❌ אין הרשאה להתראות');
       return;
     }
-    const ok = await showNotification('💊 התראת בדיקה', 'האפליקציה עובדת!');
+    const ok = await showNotification('💊 התראת בדיקה', 'האפליקציה עובדת!', showToast);
     setNotifStatus(ok ? '✅ ההתראה נשלחה! (בדוק את שורת ההתראות)' : '❌ ההתראה נכשלה — בדוק הגדרות מערכת');
     setTimeout(() => setNotifStatus(''), 4000);
   };
@@ -224,6 +234,12 @@ function App() {
 
   return (
     <div className="app" dir="rtl">
+      {toast && (
+        <div className="toast" onClick={() => setToast(null)}>
+          <div className="toast-title">{toast.title}</div>
+          <div className="toast-body">{toast.body}</div>
+        </div>
+      )}
       <div className="header">
         <div className="header-top">
           <div className="header-icon">💊</div>
