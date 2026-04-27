@@ -112,6 +112,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #EBF4FF; color: #
 
 .empty { text-align: center; padding: 48px 16px; color: #B0BEC5; font-size: 14px; line-height: 2; }
 
+.btn-import { display: block; width: 100%; padding: 11px; background: transparent; color: #1565C0; border: 1.5px solid #BBDEFB; border-radius: 14px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 8px; text-align: center; transition: all 0.2s ease; }
+.btn-import:hover { background: #EBF4FF; }
+
 .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1565C0; color: #fff; padding: 12px 20px; border-radius: 14px; box-shadow: 0 6px 24px rgba(21,101,192,0.4); z-index: 9999; min-width: 240px; max-width: 360px; cursor: pointer; animation: toastIn 0.3s ease; }
 .toast-title { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
 .toast-body  { font-size: 13px; opacity: 0.9; }

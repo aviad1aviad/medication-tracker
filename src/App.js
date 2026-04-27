@@ -168,6 +168,39 @@ function App() {
     setTimeout(() => setNotifStatus(''), 4000);
   };
 
+  const handleExport = () => {
+    const data = { meds, notifTimes, notifEnabled, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `medication-tracker-${new Date().toLocaleDateString('he-IL').replace(/\//g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.meds || !Array.isArray(data.meds)) throw new Error('קובץ לא תקין');
+        setMeds(data.meds);
+        if (data.notifTimes) setNotifTimes(data.notifTimes);
+        if (typeof data.notifEnabled === 'boolean') setNotifEnabled(data.notifEnabled);
+        setNotifStatus('✅ הנתונים יובאו בהצלחה!');
+        setTimeout(() => setNotifStatus(''), 4000);
+      } catch {
+        setNotifStatus('❌ שגיאה בקריאת הקובץ');
+        setTimeout(() => setNotifStatus(''), 4000);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const dailyDoses = (m) => m.times.reduce((sum, t) => sum + parseFloat(m.slots?.[t]?.quantity || 1), 0);
   const daysLeft = (m) => m.stock > 0 ? Math.floor(m.stock / dailyDoses(m)) : 0;
 
@@ -455,6 +488,16 @@ function App() {
             {notifEnabled && (
               <button className="btn-cancel" onClick={handleTestNotif}>שלח התראת בדיקה</button>
             )}
+          </div>
+
+          <div className="card">
+            <h2>📤 ייצוא וייבוא נתונים</h2>
+            <p className="settings-desc">העבר את רשימת התרופות בין מכשירים.</p>
+            <button className="btn-primary" onClick={handleExport}>ייצא נתונים (JSON)</button>
+            <label className="btn-import">
+              ייבא נתונים
+              <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
+            </label>
           </div>
         </div>
       )}
