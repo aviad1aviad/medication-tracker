@@ -21,21 +21,36 @@ const unitPlural = (unit) => {
   return unit;
 };
 
-// Show notification via Service Worker (works on Android PWA)
 const showNotification = async (title, body) => {
-  if (Notification.permission !== 'granted') return;
+  if (Notification.permission !== 'granted') return false;
+
+  // Try Service Worker (required for background/PWA notifications)
+  if ('serviceWorker' in navigator) {
+    try {
+      const swReady = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 3000)),
+      ]);
+      await swReady.showNotification(title, {
+        body,
+        icon: '/logo192.png',
+        badge: '/logo192.png',
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
+      });
+      return true;
+    } catch (e) {
+      console.warn('SW notification failed, fallback:', e.message);
+    }
+  }
+
+  // Fallback: direct Notification API (works only when page is open)
   try {
-    const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification(title, {
-      body,
-      icon: '/logo192.png',
-      badge: '/logo192.png',
-      vibrate: [200, 100, 200],
-      requireInteraction: false,
-    });
-  } catch (e) {
-    // Fallback
     new Notification(title, { body, icon: '/logo192.png' });
+    return true;
+  } catch (e) {
+    console.error('Notification failed:', e);
+    return false;
   }
 };
 
@@ -136,9 +151,9 @@ function App() {
       setNotifStatus('❌ אין הרשאה להתראות');
       return;
     }
-    await showNotification('💊 התראת בדיקה', 'האפליקציה עובדת!');
-    setNotifStatus('✅ ההתראה נשלחה!');
-    setTimeout(() => setNotifStatus(''), 3000);
+    const ok = await showNotification('💊 התראת בדיקה', 'האפליקציה עובדת!');
+    setNotifStatus(ok ? '✅ ההתראה נשלחה! (בדוק את שורת ההתראות)' : '❌ ההתראה נכשלה — בדוק הגדרות מערכת');
+    setTimeout(() => setNotifStatus(''), 4000);
   };
 
   const dailyDoses = (m) => m.times.reduce((sum, t) => sum + parseFloat(m.slots?.[t]?.quantity || 1), 0);
